@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ProductMapper">
+
+
+	<resultMap id="productSelectMap" type="product">
+		<result property="fileName" column="image_file" jdbcType="VARCHAR" />
+		<result property="manuDate" column="manufacture_day" jdbcType="VARCHAR" />
+		<result property="price" column="price" jdbcType="INTEGER" />
+		<result property="prodDetail" column="prod_detail" jdbcType="VARCHAR" />
+		<result property="prodName" column="prod_name" jdbcType="VARCHAR" />
+		<result property="prodNo" column="prod_no" jdbcType="NUMERIC" />
+		<result property="regDate" column="reg_date" jdbcType="DATE" />
+	</resultMap>
+
+
+	<insert id="insertProduct" parameterType="product">
+		INSERT
+		INTO product( prod_no, prod_name , prod_detail , manufacture_day ,
+		price , image_file , reg_date)
+		VALUES (seq_product_prod_no.nextval, 
+		#{prodName}, 
+		#{prodDetail},
+		#{manuDate},
+		#{price:INTEGER}, 
+		#{fileName:VARCHAR}, 
+		SYSDATE )
+	</insert>
+
+
+	<select id="findProduct" parameterType="int"
+		resultMap="productSelectMap">
+		SELECT
+		prod_no , prod_name , prod_detail , manufacture_day ,
+		price , image_file , reg_date
+		FROM product
+		WHERE prod_no = #{value}
+	</select>
+
+
+	<update id="updateProduct" parameterType="product">
+		UPDATE product
+		<set>
+			prod_name = #{prodName} ,
+			prod_detail = #{prodDetail},
+			manufacture_day = #{manuDate},
+			price = #{price:INTEGER},
+			image_file = #{fileName:VARCHAR}
+		</set>
+		WHERE prod_no = #{prodNo}
+	</update>
+
+
+	<select id="getProductList" parameterType="search"
+		resultMap="productSelectMap">
+		SELECT p1.prod_no, p1.prod_name, p1.prod_detail, p1.manufacture_day,
+		p1.price, p1.image_file, p1.reg_date, t1.TRAN_STATUS_CODE tranCode
+		FROM (SELECT inner_table. * , ROWNUM AS row_seq
+		FROM (select * from PRODUCT
+		
+			<if test="searchCondition != null">
+				<where>
+					<if test="searchCondition == 0 and searchKeyword !='' ">
+						prod_no LIKE '%${searchKeyword}%'
+					</if>
+					<if test="searchCondition == 1 and searchKeyword !='' ">
+						prod_name LIKE '%${searchKeyword}%'
+					</if>
+					<if test="searchCondition == 2 and searchKeyword !='' ">
+						price LIKE '%${searchKeyword}%'
+					</if>
+				</where>
+			</if>
+			
+		ORDER BY prod_no ) inner_table
+		WHERE ROWNUM &lt;= #{endRowNum} ) p1, transaction t1
+		WHERE p1.prod_no =
+		t1.prod_no(+) AND row_seq BETWEEN #{startRowNum} AND #{endRowNum}
+	</select>
+	<!-- 위 두번째 subQuery 의 WHERE ROWNUM &lt;= #{endRowNum} ) 는 WHERE ROWNUM <= 
+		#{endRowNum} ) 의미이며.. < 는 keyword 로 &lt; 를 사용. <![CDATA[ ~~~ ]]> 를 이용하여 아래와 
+		같이 사용 할 수 있다. CDATA ==> Character Data 의 의미 Java 에서 \n 같은 특수문자 처리 WHERE ROWNUM 
+		<![CDATA[ <=]]> #{endRowNum} ) -->
+
+	<!-- SQL : SELECT ROW Count -->
+	<select id="getTotalCount" parameterType="search"
+		resultType="int">
+		SELECT COUNT(*)
+		FROM( SELECT p1.prod_no, p1.prod_name, p1.prod_detail, p1.manufacture_day,
+		p1.price, p1.image_file, p1.reg_date, t1.TRAN_STATUS_CODE tranCode
+		FROM product p1, transaction t1 WHERE p1.prod_no = t1.prod_no(+) 
+		<if test="searchCondition != null">
+			<if test="searchCondition == 0 and searchKeyword !='' ">
+				AND p1.prod_no LIKE '%${searchKeyword}%'
+			</if>
+			<if test="searchCondition == 1 and searchKeyword !='' ">
+				AND p1.prod_name LIKE '%${searchKeyword}%'
+			</if>
+			<if test="searchCondition == 2 and searchKeyword !='' ">
+				AND p1.price LIKE '%${searchKeyword}%'
+			</if>
+		</if>
+		 ) countTable
+	</select>
+	
+	
+	<select id="getautoList" parameterType="map" resultType="map">
+		SELECT DISTINCT prod_no, prod_name,  price
+		FROM product
+		<if test="con != null">
+			<where>
+				<if test="con == 0 ">
+					prod_no  LIKE '${value}%'
+				</if>
+				<if test="con == 1 ">
+					prod_name  LIKE '${value}%'
+				</if>
+				<if test="con == 2 ">
+					price LIKE '${value}%'
+				</if>
+			</where>
+		</if>
+		ORDER BY prod_no
+	</select>
+
+</mapper>
